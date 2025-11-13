@@ -1,0 +1,8 @@
+[package]
+name = "ferreline"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dotnet-io-binary = "0.1.0-alpha"
+iteratail = "0.1.0-alpha"
