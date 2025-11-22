@@ -59,17 +59,17 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("bump create", |b| {
         b.iter(|| {
             bump.reset();
-            let map = CelesteMap::read(&bump, buf.as_slice()).expect("Cannot load map");
+            let map = CelesteMap::read_in(&bump, buf.as_slice()).expect("Cannot load map");
             black_box(map);
         })
     });
     c.bench_function("global create", |b| {
         b.iter(|| {
-            let map = CelesteMap::read(&Global, buf.as_slice()).expect("Cannot load map");
+            let map = CelesteMap::read_in(&Global, buf.as_slice()).expect("Cannot load map");
             black_box(map);
         })
     });
-    let map_bump = CelesteMap::read(&bump, buf.as_slice()).expect("Cannot load map");
+    let map_bump = CelesteMap::read_in(&bump, buf.as_slice()).expect("Cannot load map");
     c.bench_function("bump visit", |b| {
         b.iter(|| {
             directed_visit::visit(
@@ -79,7 +79,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             );
         })
     });
-    let map_global = CelesteMap::read(&Global, buf.as_slice()).expect("Cannot load map");
+    let map_global = CelesteMap::read_in(&Global, buf.as_slice()).expect("Cannot load map");
     c.bench_function("global visit", |b| {
         b.iter(|| {
             directed_visit::visit(

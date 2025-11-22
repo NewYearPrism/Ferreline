@@ -107,21 +107,6 @@ pub struct Attribute<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allo
     pub value: AttributeValue<Rc, A>,
 }
 
-impl<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allocator> iddqd::IdHashItem
-    for Attribute<Rc, A>
-{
-    iddqd::id_upcast!();
-
-    type Key<'a>
-        = &'a [u8]
-    where
-        Self: 'a;
-
-    fn key(&self) -> Self::Key<'_> {
-        &self.name
-    }
-}
-
 impl<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allocator> Attribute<Rc, A> {
     pub(crate) fn read<R: std::io::Read + core::borrow::BorrowMut<R>>(
         alloc: A,

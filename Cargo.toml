@@ -1,6 +1,6 @@
 [package]
 name = "ferreline"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 edition = "2024"
 license = "MIT"
 description = "Rust library for interop with game Celeste"
@@ -16,7 +16,6 @@ derive_more = { version = "2.0.1", default-features = false, features = [
 ] }
 directed-visit = { version = "0.3.2", optional = true }
 dotnet-io-binary = "0.1.0-alpha"
-iddqd = "0.3.16"
 shared_vector = "0.4.4"
 
 [dev-dependencies]

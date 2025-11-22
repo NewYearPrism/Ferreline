@@ -27,7 +27,7 @@ fn test() {
     let map_file = File::open(map_path).expect("Unable to open map file");
     let reader = BufReader::new(map_file);
     let bump = bumpalo::Bump::new();
-    let map = CelesteMap::read(&bump, reader).expect("Failed to load map");
+    let map = CelesteMap::read_in(&bump, reader).expect("Failed to load map");
     assert_eq!("LostLevels".as_bytes(), map.package_name);
 }
 
@@ -53,7 +53,7 @@ fn test_visit() {
     let map_file = File::open(map_path).expect("Unable to open map file");
     let reader = BufReader::new(map_file);
     let bump = bumpalo::Bump::new();
-    let map = CelesteMap::read(&bump, reader).expect("Failed to load map");
+    let map = CelesteMap::read_in(&bump, reader).expect("Failed to load map");
     directed_visit::visit(&mut ElementDirector, &mut TestElementVisitor, &map.tree);
     println!("{}", bump.allocated_bytes());
 }

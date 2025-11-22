@@ -6,7 +6,7 @@ use crate::celeste_map::{
 #[derive(Debug, Clone)]
 pub struct Element<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allocator> {
     pub name: shared_vector::RefCountedVector<u8, Rc, A>,
-    pub attributes: iddqd::IdHashMap<Attribute<Rc, A>, iddqd::DefaultHashBuilder, A>,
+    pub attributes: allocator_api2::vec::Vec<Attribute<Rc, A>, A>,
     pub children: allocator_api2::vec::Vec<Element<Rc, A>, A>,
 }
 
@@ -29,11 +29,13 @@ impl<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allocator + Clone> E
 
         let name = lookup.read_indexed(reader.borrow_mut())?;
         let attr_count: u8 = reader.read_prim()?;
-        let mut attributes = iddqd::IdHashMap::with_capacity_in(attr_count as _, alloc.clone());
+        let mut attributes =
+            allocator_api2::vec::Vec::with_capacity_in(attr_count as _, alloc.clone());
         for _ in 0..attr_count {
             let attr = Attribute::read(alloc.clone(), reader.borrow_mut(), lookup)?;
-            attributes.insert_unique(attr).ok();
+            attributes.push(attr);
         }
+        attributes.sort_by(|a, b| a.name.cmp(&b.name));
         let child_count: u16 = reader.read_prim()?;
         let mut children =
             allocator_api2::vec::Vec::with_capacity_in(child_count as _, alloc.clone());

@@ -9,7 +9,10 @@ pub mod header;
 pub mod lookup;
 
 #[derive(Debug, Clone)]
-pub struct CelesteMap<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allocator> {
+pub struct CelesteMap<
+    Rc: shared_vector::RefCount = shared_vector::DefaultRefCount,
+    A: allocator_api2::alloc::Allocator = allocator_api2::alloc::Global,
+> {
     pub package_name: allocator_api2::vec::Vec<u8, A>,
     pub lookup: Lookup<Rc, A>,
     pub tree: Element<Rc, A>,
@@ -23,8 +26,25 @@ pub enum CelesteMapReadError {
     Element(element::ElementReadError),
 }
 
-impl<A: allocator_api2::alloc::Allocator + Clone> CelesteMap<shared_vector::DefaultRefCount, A> {
+impl CelesteMap {
     pub fn read<R: std::io::Read + core::borrow::BorrowMut<R>>(
+        reader: R,
+    ) -> Result<Self, CelesteMapReadError> {
+        Self::read_in(Default::default(), reader)
+    }
+}
+
+impl<A: allocator_api2::alloc::Allocator + Clone> CelesteMap<shared_vector::DefaultRefCount, A> {
+    pub fn read_in<R: std::io::Read + core::borrow::BorrowMut<R>>(
+        alloc: A,
+        mut reader: R,
+    ) -> Result<Self, CelesteMapReadError> {
+        Self::with_rc_in(alloc, &mut reader)
+    }
+}
+
+impl<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allocator + Clone> CelesteMap<Rc, A> {
+    pub fn with_rc_in<R: std::io::Read + core::borrow::BorrowMut<R>>(
         alloc: A,
         mut reader: R,
     ) -> Result<Self, CelesteMapReadError> {
@@ -37,29 +57,6 @@ impl<A: allocator_api2::alloc::Allocator + Clone> CelesteMap<shared_vector::Defa
             buf
         })?;
         let lookup = Lookup::read(alloc.clone(), reader.borrow_mut())?;
-        let tree = Element::read(alloc.clone(), reader, &lookup)?;
-        Ok(Self {
-            package_name,
-            lookup,
-            tree,
-        })
-    }
-}
-
-impl<A: allocator_api2::alloc::Allocator + Clone> CelesteMap<shared_vector::AtomicRefCount, A> {
-    pub fn read_atomic<R: std::io::Read + core::borrow::BorrowMut<R>>(
-        alloc: A,
-        mut reader: R,
-    ) -> Result<Self, CelesteMapReadError> {
-        use dotnet_io_binary::io::string::ReadDotnetStr;
-
-        header::read_header(reader.borrow_mut())?;
-        let package_name = reader.read_dotnet_str(|len| {
-            let mut buf = allocator_api2::vec::Vec::with_capacity_in(len as _, alloc.clone());
-            buf.extend(core::iter::repeat_n(0, len as _));
-            buf
-        })?;
-        let lookup = Lookup::read_atomic(alloc.clone(), reader.borrow_mut())?;
         let tree = Element::read(alloc.clone(), reader, &lookup)?;
         Ok(Self {
             package_name,
