@@ -4,5 +4,27 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+allocator-api2 = "0.2.21"
+derive_more = { version = "2.0.1", default-features = false, features = [
+    "error",
+    "try_from",
+    "deref",
+] }
+directed-visit = { version = "0.3.2", optional = true }
 dotnet-io-binary = "0.1.0-alpha"
-iteratail = "0.1.0-alpha"
+iddqd = "0.3.16"
+shared_vector = "0.4.4"
+
+[dev-dependencies]
+bumpalo = { version = "3.19.0", features = ["allocator-api2"] }
+dotenvy = "0.15.7"
+criterion = "0.7.0"
+ferreline = { path = ".", features = ["visit"] }
+
+[[bench]]
+name = "my_benchmark"
+harness = false
+
+[features]
+visit = ["dep:directed-visit"]
+sync = []
