@@ -33,32 +33,28 @@ impl AttributeType {
 }
 
 #[derive(Debug, Clone)]
-pub enum AttributeValue<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allocator> {
+pub enum AttributeValue<'l, A: allocator_api2::alloc::Allocator> {
     Boolean(bool),
     Byte(u8),
     Int16(i16),
     Int32(i32),
     Single(f32),
-    Lookup(shared_vector::RefCountedVector<u8, Rc, A>),
-    Str(allocator_api2::vec::Vec<u8, A>),
-    Rle(allocator_api2::vec::Vec<u8, A>),
+    Lookup(&'l [u8]),
+    Str(allocator_api2::boxed::Box<[u8], A>),
+    Rle(allocator_api2::boxed::Box<[u8], A>),
 }
 
 impl AttributeType {
     fn read_value<
-        Rc: shared_vector::RefCount,
         A: allocator_api2::alloc::Allocator,
         R: std::io::Read + core::borrow::BorrowMut<R>,
     >(
         self,
         alloc: A,
         mut reader: R,
-        lookup: &Lookup<Rc, A>,
-    ) -> Result<AttributeValue<Rc, A>, AttributeReadError> {
-        use dotnet_io_binary::io::{
-            prim::ReadPrim,
-            string::ReadDotnetStr,
-        };
+        lookup: &Lookup<A>,
+    ) -> Result<AttributeValue<'_, A>, AttributeReadError> {
+        use dotnet_io_binary::io::prim::ReadPrim;
         let attr = match self {
             AttributeType::Boolean => {
                 let p: u8 = reader.read_prim()?;
@@ -70,17 +66,14 @@ impl AttributeType {
             AttributeType::Single => AttributeValue::Single(reader.read_prim()?),
             AttributeType::Lookup => AttributeValue::Lookup(lookup.read_indexed(reader)?),
             AttributeType::Str => {
-                let buf = reader.read_dotnet_str(|len| {
-                    let mut buf = allocator_api2::vec::Vec::with_capacity_in(len as _, alloc);
-                    buf.extend(core::iter::repeat_n(0, len as _));
-                    buf
-                })?;
+                let buf = crate::read_dotnet_str(alloc, &mut reader)?;
                 AttributeValue::Str(buf)
             }
             AttributeType::Rle => {
                 let len: i16 = reader.read_prim()?;
-                let mut buf = allocator_api2::vec::Vec::with_capacity_in(len as _, alloc);
-                buf.resize(len as _, 0);
+                let mut buf = unsafe {
+                    allocator_api2::boxed::Box::new_zeroed_slice_in(len as _, alloc).assume_init()
+                };
                 reader.read_exact(&mut buf)?;
                 AttributeValue::Rle(buf)
             }
@@ -89,11 +82,11 @@ impl AttributeType {
     }
 }
 
-impl<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allocator> AttributeValue<Rc, A> {
+impl<'l, A: allocator_api2::alloc::Allocator> AttributeValue<'l, A> {
     fn read<R: std::io::Read + core::borrow::BorrowMut<R>>(
         alloc: A,
         mut reader: R,
-        lookup: &Lookup<Rc, A>,
+        lookup: &'l Lookup<A>,
     ) -> Result<Self, AttributeReadError> {
         let t = AttributeType::read(reader.borrow_mut())?;
         let a = t.read_value(alloc, reader, lookup)?;
@@ -101,17 +94,19 @@ impl<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allocator> Attribute
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Attribute<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allocator> {
-    pub name: shared_vector::RefCountedVector<u8, Rc, A>,
-    pub value: AttributeValue<Rc, A>,
+#[derive(Debug, Clone, derivative::Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
+pub struct Attribute<'l, A: allocator_api2::alloc::Allocator> {
+    pub name: &'l [u8],
+    #[derivative(PartialEq = "ignore", PartialOrd = "ignore", Ord = "ignore")]
+    pub value: AttributeValue<'l, A>,
 }
 
-impl<Rc: shared_vector::RefCount, A: allocator_api2::alloc::Allocator> Attribute<Rc, A> {
+impl<'l, A: allocator_api2::alloc::Allocator> Attribute<'l, A> {
     pub(crate) fn read<R: std::io::Read + core::borrow::BorrowMut<R>>(
         alloc: A,
         mut reader: R,
-        lookup: &Lookup<Rc, A>,
+        lookup: &'l Lookup<A>,
     ) -> Result<Self, AttributeReadError> {
         let name = lookup.read_indexed(reader.borrow_mut())?;
         let value = AttributeValue::read(alloc, reader, lookup)?;

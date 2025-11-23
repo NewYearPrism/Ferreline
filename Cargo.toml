@@ -1,6 +1,6 @@
 [package]
 name = "ferreline"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 edition = "2024"
 license = "MIT"
 description = "Rust library for interop with game Celeste"
@@ -9,25 +9,22 @@ repository = "https://github.com/NewYearPrism/Ferreline.git"
 
 [dependencies]
 allocator-api2 = "0.2.21"
+derivative = { version = "2.2.0", features = ["use_core"] }
 derive_more = { version = "2.0.1", default-features = false, features = [
     "error",
     "try_from",
     "deref",
 ] }
-directed-visit = { version = "0.3.2", optional = true }
 dotnet-io-binary = "0.1.0-alpha"
-shared_vector = "0.4.4"
 
 [dev-dependencies]
 bumpalo = { version = "3.19.0", features = ["allocator-api2"] }
 dotenvy = "0.15.7"
 criterion = "0.7.0"
-ferreline = { path = ".", features = ["visit"] }
+anyhow = "1.0.100"
+blink-alloc = { version = "0.3.1", features = ["alloc"] }
+thread_local_allocator = { version = "0.1.0-alpha.1", features = ["bumpalo"] }
 
 [[bench]]
 name = "my_benchmark"
 harness = false
-
-[features]
-visit = ["dep:directed-visit"]
-sync = []
