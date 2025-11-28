@@ -1,50 +1,75 @@
-use crate::celeste_map::{
-    attribute::Attribute,
-    lookup::Lookup,
+use std::{
+    borrow::BorrowMut,
+    io,
+    io::Read,
+};
+
+use allocator_api2::{
+    alloc::{
+        Allocator,
+        Global,
+    },
+    vec::Vec,
+};
+use hashbrown::{
+    DefaultHashBuilder,
+    HashMap,
+};
+
+use crate::{
+    celeste_map::{
+        attribute::{
+            Attribute,
+            AttributeReadError,
+            AttributeValue,
+        },
+        lookup::Lookup,
+    },
+    string::SimpleString,
 };
 
 #[derive(Debug, Clone)]
-pub struct Element<'l, A: allocator_api2::alloc::Allocator> {
-    pub name: &'l [u8],
-    pub attributes: allocator_api2::boxed::Box<[Attribute<'l, A>], A>,
-    pub children: allocator_api2::boxed::Box<[Element<'l, A>], A>,
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(deserialize = "A: Default + Clone", serialize = ""))
+)]
+pub struct Element<A: Allocator = Global> {
+    pub name: SimpleString<A>,
+    pub attributes: HashMap<SimpleString<A>, AttributeValue<A>, DefaultHashBuilder, A>,
+    pub children: Vec<Element<A>, A>,
 }
 
 #[derive(Debug, derive_more::Display, derive_more::Error, derive_more::From)]
 pub enum ElementReadError {
-    Io(std::io::Error),
-    Attribute(super::attribute::AttributeReadError),
+    Io(io::Error),
+    Attribute(AttributeReadError),
 }
 
-impl<'l, A: allocator_api2::alloc::Allocator + Clone> Element<'l, A> {
-    pub(crate) fn read<R: std::io::Read>(
+impl<A: Allocator + Clone> Element<A> {
+    pub(crate) fn read<R: Read>(
         alloc: A,
-        mut reader: impl std::io::Read + core::borrow::BorrowMut<R>,
-        lookup: &'l Lookup<A>,
+        mut reader: impl Read + BorrowMut<R>,
+        lookup: &Lookup<A>,
     ) -> Result<Self, ElementReadError>
     where
-        for<'a> &'a mut R: core::borrow::BorrowMut<R>,
+        for<'r> &'r mut R: BorrowMut<R>,
     {
         use dotnet_io_binary::io::prim::ReadPrim;
 
-        let name = lookup.read_indexed(reader.borrow_mut())?;
+        let name = lookup.read_indexed(reader.borrow_mut())?.clone();
         let attr_count: u8 = reader.read_prim()?;
-        let mut attributes =
-            allocator_api2::boxed::Box::new_uninit_slice_in(attr_count as _, alloc.clone());
-        for i in 0..attr_count {
+        let mut attributes = HashMap::with_capacity_in(attr_count as _, alloc.clone());
+        for _ in 0..attr_count {
             let attr = Attribute::read(alloc.clone(), reader.borrow_mut(), lookup)?;
-            attributes[i as usize].write(attr);
+            attributes.insert(attr.name, attr.value);
         }
-        let mut attributes = unsafe { attributes.assume_init() };
-        attributes.sort();
         let child_count: u16 = reader.read_prim()?;
-        let mut children =
-            allocator_api2::boxed::Box::new_uninit_slice_in(child_count as _, alloc.clone());
-        for i in 0..child_count {
+        let mut children = Vec::with_capacity_in(child_count as _, alloc.clone());
+        for _ in 0..child_count {
             let elem = Element::read(alloc.clone(), reader.borrow_mut(), lookup)?;
-            children[i as usize].write(elem);
+            children.push(elem);
         }
-        let children = unsafe { children.assume_init() };
         Ok(Self {
             name,
             attributes,
