@@ -11,8 +11,8 @@ use allocator_api2::{
     vec::Vec,
 };
 
-use crate::{
-    celeste_map::lookup::Lookup,
+use crate::celeste_map::{
+    lookup::Lookup,
     rle::Rle,
     string::{
         ReadStringError,
@@ -92,7 +92,7 @@ impl AttributeType {
                 AttributeValue::Lookup(lk.clone())
             }
             AttributeType::Str => {
-                let buf = crate::string::read_dotnet_str(alloc, &mut reader)?;
+                let buf = crate::celeste_map::string::read_dotnet_str(alloc, &mut reader)?;
                 AttributeValue::String(buf)
             }
             AttributeType::Rle => {

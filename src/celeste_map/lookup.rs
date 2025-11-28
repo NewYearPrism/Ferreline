@@ -11,7 +11,7 @@ use allocator_api2::{
     vec::Vec,
 };
 
-use crate::string::{
+use crate::celeste_map::string::{
     ReadStringError,
     SimpleString,
 };
@@ -44,7 +44,7 @@ impl<A: Allocator + Clone> Lookup<A> {
         let count: i16 = reader.read_prim()?;
         let mut list = Vec::with_capacity_in(count as _, alloc.clone());
         for _ in 0..count {
-            let s = crate::string::read_dotnet_str(alloc.clone(), &mut reader)?;
+            let s = crate::celeste_map::string::read_dotnet_str(alloc.clone(), &mut reader)?;
             list.push(s);
         }
         Ok(Self { inner: list })

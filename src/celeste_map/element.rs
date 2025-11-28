@@ -16,15 +16,13 @@ use hashbrown::{
     HashMap,
 };
 
-use crate::{
-    celeste_map::{
-        attribute::{
-            Attribute,
-            AttributeReadError,
-            AttributeValue,
-        },
-        lookup::Lookup,
+use crate::celeste_map::{
+    attribute::{
+        Attribute,
+        AttributeReadError,
+        AttributeValue,
     },
+    lookup::Lookup,
     string::SimpleString,
 };
 

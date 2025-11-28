@@ -4,19 +4,19 @@ use allocator_api2::alloc::{
     Allocator,
     Global,
 };
+use string::SimpleString;
 
-use crate::{
-    celeste_map::{
-        element::Element,
-        lookup::Lookup,
-    },
-    string::SimpleString,
+use crate::celeste_map::{
+    element::Element,
+    lookup::Lookup,
 };
 
 pub mod attribute;
 pub mod element;
 pub mod header;
 pub mod lookup;
+pub mod rle;
+pub mod string;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -36,7 +36,7 @@ pub struct CelesteMap<A: Allocator = Global> {
 #[derive(Debug, derive_more::Display, derive_more::Error, derive_more::From)]
 pub enum CelesteMapReadError {
     Header(header::HeaderReadError),
-    PackageName(crate::string::ReadStringError),
+    PackageName(string::ReadStringError),
     Lookup(lookup::LookupReadError),
     Element(element::ElementReadError),
 }
@@ -50,7 +50,7 @@ impl CelesteMap {
 impl<A: Allocator + Clone> CelesteMap<A> {
     pub fn read_in(alloc: A, mut reader: impl Read) -> Result<Self, CelesteMapReadError> {
         header::read_header(&mut reader)?;
-        let package_name = crate::string::read_dotnet_str(alloc.clone(), &mut reader)?;
+        let package_name = string::read_dotnet_str(alloc.clone(), &mut reader)?;
         let lookup = Lookup::read_in(alloc.clone(), &mut reader)?;
         let tree = Element::read(alloc, reader, &lookup)?;
         Ok(Self {
