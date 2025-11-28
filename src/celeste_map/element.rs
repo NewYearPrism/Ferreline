@@ -27,14 +27,25 @@ use crate::celeste_map::{
 };
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
     serde(bound(deserialize = "A: Default + Clone", serialize = ""))
 )]
 pub struct Element<A: Allocator = Global> {
     pub name: SimpleString<A>,
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "HashMap::is_empty", default)
+    )]
     pub attributes: HashMap<SimpleString<A>, AttributeValue<A>, DefaultHashBuilder, A>,
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            skip_serializing_if = "Vec::is_empty",
+            default = "super::vec::default_vec"
+        )
+    )]
     pub children: Vec<Element<A>, A>,
 }
 

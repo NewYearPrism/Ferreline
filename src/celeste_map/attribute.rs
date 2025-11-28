@@ -53,11 +53,12 @@ impl AttributeType {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
-    serde(bound(deserialize = "A: Default", serialize = "")),
-    serde(tag = "type", content = "value")
+    derive(serde::Serialize),
+    serde(bound(serialize = "")),
+    serde(rename_all = "snake_case"),
+    serde(untagged)
 )]
 pub enum AttributeValue<A: Allocator = Global> {
     Boolean(bool),
@@ -68,6 +69,26 @@ pub enum AttributeValue<A: Allocator = Global> {
     Lookup(SimpleString<A>),
     String(SimpleString<A>),
     RunLengthEncoded(Rle<A>),
+}
+
+#[cfg(feature = "serde")]
+impl<'de, A: Allocator + Default> serde::Deserialize<'de> for AttributeValue<A> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        serde_untagged::UntaggedEnumVisitor::new()
+            .bool(|b| Ok(Self::Boolean(b)))
+            .i64(|i| Ok(Self::Integer(i as _)))
+            .f64(|f| Ok(Self::Float(f as _)))
+            .string(|s| {
+                let mut buf = Vec::with_capacity_in(s.len(), Default::default());
+                buf.extend_from_slice(s.as_bytes());
+                Ok(Self::String(buf.try_into().unwrap()))
+            })
+            .seq(|s| s.deserialize().map(Self::RunLengthEncoded))
+            .deserialize(deserializer)
+    }
 }
 
 impl AttributeType {

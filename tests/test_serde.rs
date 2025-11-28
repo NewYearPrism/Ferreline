@@ -14,7 +14,7 @@ static CELESTE_PATH: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
 });
 
 #[test]
-fn test() -> anyhow::Result<()> {
+fn test_serde() -> anyhow::Result<()> {
     let celeste_path = CELESTE_PATH
         .as_ref()
         .ok_or(anyhow::anyhow!("CELESTE_PATH not set"))?;

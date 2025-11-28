@@ -17,11 +17,13 @@ pub mod header;
 pub mod lookup;
 pub mod rle;
 pub mod string;
+#[cfg(feature = "serde")]
+pub(crate) mod vec;
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
     serde(bound(deserialize = "A: Default + Clone", serialize = ""))
 )]
 pub struct CelesteMap<A: Allocator = Global> {
