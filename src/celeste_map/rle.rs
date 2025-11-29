@@ -21,13 +21,15 @@ impl<A: Allocator> serde::Serialize for Rle<A> {
     where
         S: serde::Serializer,
     {
-        use serde::ser::SerializeSeq;
-        let (pairs, _) = self.0.as_chunks();
-        let mut seq = serializer.serialize_seq(Some(pairs.len()))?;
-        for &[count, code] in pairs {
-            seq.serialize_element(&(count, char::from(code)))?;
+        use serde::ser::SerializeMap;
+        let mut buf = String::new();
+        for &[count, code] in self.0.as_chunks().0 {
+            buf.push_str(&format!("{:02X}", count));
+            buf.push(code as _);
         }
-        seq.end()
+        let mut map = serializer.serialize_map(Some(1))?;
+        map.serialize_entry("rle", &buf)?;
+        map.end()
     }
 }
 
@@ -42,24 +44,31 @@ impl<'de, A: Allocator + Default> serde::Deserialize<'de> for Rle<A> {
             type Value = Rle<A>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a sequence of pairs of a count number and a char")
+                formatter.write_str("a sequence of pairs of count number and char")
             }
 
-            fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
+            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
             where
-                S: serde::de::SeqAccess<'de>,
+                M: serde::de::MapAccess<'de>,
             {
+                use serde::de::Error;
+                let _: &str = map
+                    .next_key()?
+                    .filter(|&k| k == "rle")
+                    .ok_or(Error::missing_field("rle"))?;
+                let s: String = map.next_value()?;
                 let mut buf = Vec::new_in(Default::default());
-                if let Some(count) = seq.size_hint() {
-                    buf.reserve_exact(count);
-                }
-                while let Some((count, code)) = seq.next_element::<(u8, char)>()? {
-                    buf.push(count);
+                for &[high, low, code] in s.as_bytes().as_chunks().0 {
+                    let a: u8 = str::from_utf8(&[high, low])
+                        .map(|a| u8::from_str_radix(a, 16))
+                        .map_err(M::Error::custom)?
+                        .map_err(M::Error::custom)?;
+                    buf.push(a);
                     buf.push(code as _);
                 }
                 Ok(Rle(buf))
             }
         }
-        deserializer.deserialize_seq(_Visitor(Default::default()))
+        deserializer.deserialize_map(_Visitor(Default::default()))
     }
 }

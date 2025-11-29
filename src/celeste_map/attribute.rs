@@ -86,7 +86,7 @@ impl<'de, A: Allocator + Default> serde::Deserialize<'de> for AttributeValue<A> 
                 buf.extend_from_slice(s.as_bytes());
                 Ok(Self::String(buf.try_into().unwrap()))
             })
-            .seq(|s| s.deserialize().map(Self::RunLengthEncoded))
+            .map(|m| m.deserialize().map(Self::RunLengthEncoded))
             .deserialize(deserializer)
     }
 }

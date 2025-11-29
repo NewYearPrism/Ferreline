@@ -95,7 +95,7 @@ dependencies = [
 
 [[package]]
 name = "ferreline"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 dependencies = [
  "allocator-api2",
  "anyhow",
