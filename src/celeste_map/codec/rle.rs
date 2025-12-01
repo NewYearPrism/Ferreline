@@ -1,22 +1,14 @@
-use allocator_api2::{
-    alloc::{
-        Allocator,
-        Global,
-    },
-    vec::Vec,
-};
+#[derive(Debug, Clone, derive_more::Deref)]
+pub struct Rle(Vec<u8>);
 
-#[derive(Debug, Clone)]
-pub struct Rle<A: Allocator = Global>(Vec<u8, A>);
-
-impl<A: Allocator> Rle<A> {
-    pub fn new(s: Vec<u8, A>) -> Option<Self> {
-        s.len().is_multiple_of(2).then(|| Self(s))
+impl Rle {
+    pub fn new(s: Vec<u8>) -> Option<Self> {
+        s.len().is_multiple_of(2).then_some(Self(s))
     }
 }
 
 #[cfg(feature = "serde")]
-impl<A: Allocator> serde::Serialize for Rle<A> {
+impl serde::Serialize for Rle {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -34,14 +26,14 @@ impl<A: Allocator> serde::Serialize for Rle<A> {
 }
 
 #[cfg(feature = "serde")]
-impl<'de, A: Allocator + Default> serde::Deserialize<'de> for Rle<A> {
+impl<'de> serde::Deserialize<'de> for Rle {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        struct _Visitor<A>(core::marker::PhantomData<A>);
-        impl<'de, A: Allocator + Default> serde::de::Visitor<'de> for _Visitor<A> {
-            type Value = Rle<A>;
+        struct _Visitor;
+        impl<'de> serde::de::Visitor<'de> for _Visitor {
+            type Value = Rle;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                 formatter.write_str("a sequence of pairs of count number and char")
@@ -57,7 +49,7 @@ impl<'de, A: Allocator + Default> serde::Deserialize<'de> for Rle<A> {
                     .filter(|&k| k == "rle")
                     .ok_or(Error::missing_field("rle"))?;
                 let s: String = map.next_value()?;
-                let mut buf = Vec::new_in(Default::default());
+                let mut buf = Vec::new();
                 for &[high, low, code] in s.as_bytes().as_chunks().0 {
                     let a: u8 = str::from_utf8(&[high, low])
                         .map(|a| u8::from_str_radix(a, 16))
@@ -69,6 +61,6 @@ impl<'de, A: Allocator + Default> serde::Deserialize<'de> for Rle<A> {
                 Ok(Rle(buf))
             }
         }
-        deserializer.deserialize_map(_Visitor(Default::default()))
+        deserializer.deserialize_map(_Visitor)
     }
 }

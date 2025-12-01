@@ -5,8 +5,7 @@ use std::{
     sync::LazyLock,
 };
 
-use ferreline::celeste_map::CelesteMap;
-use thread_local_allocator::bumpalo::ThreadLocalBump;
+use ferreline::celeste_map::codec::CelesteMap;
 
 static CELESTE_PATH: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
     dotenvy::dotenv().ok();
@@ -21,24 +20,7 @@ fn test() -> anyhow::Result<()> {
     let map_path = celeste_path.join("Content/Maps/LostLevels.bin");
     let map_file = File::open(map_path)?;
     let mut reader = BufReader::new(map_file);
-    let bump = bumpalo::Bump::new();
-    let map = CelesteMap::read_in(&bump, &mut reader)?;
+    let map = CelesteMap::read(&mut reader)?;
     assert_eq!("LostLevels", map.package_name.as_str());
-    println!("Bumped: {}", bump.allocated_bytes());
-    Ok(())
-}
-
-#[test]
-fn test_zst_alloc() -> anyhow::Result<()> {
-    let celeste_path = CELESTE_PATH
-        .as_ref()
-        .ok_or(anyhow::anyhow!("CELESTE_PATH not set"))?;
-    let map_path = celeste_path.join("Content/Maps/LostLevels.bin");
-    let map_file = File::open(map_path)?;
-    let mut reader = BufReader::new(map_file);
-    let map = CelesteMap::read_in(ThreadLocalBump, &mut reader)?;
-    assert_eq!("LostLevels", map.package_name.as_str());
-    ThreadLocalBump::BUMP
-        .with_borrow(|bump| println!("Thread local bumped: {}", bump.allocated_bytes()));
     Ok(())
 }

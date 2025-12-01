@@ -5,8 +5,7 @@ use std::{
     sync::LazyLock,
 };
 
-use ferreline::celeste_map::CelesteMap;
-use thread_local_allocator::bumpalo::ThreadLocalBump;
+use ferreline::celeste_map::codec::CelesteMap;
 
 static CELESTE_PATH: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
     dotenvy::dotenv().ok();
@@ -22,7 +21,7 @@ fn test_serde() -> anyhow::Result<()> {
     let map_path = celeste_path.join("Content/Maps/LostLevels.bin");
     let map_file = File::open(map_path)?;
     let mut reader = BufReader::new(map_file);
-    let map = CelesteMap::read_in(ThreadLocalBump, &mut reader)?;
+    let map = CelesteMap::read(&mut reader)?;
     let dede = serde_json::to_string(&map)?;
     let sered: CelesteMap = serde_json::from_str(&dede)?;
     assert_eq!("LostLevels", sered.package_name.as_str());
@@ -32,7 +31,5 @@ fn test_serde() -> anyhow::Result<()> {
     // let dede = serde_xml_rs::to_string(&map)?;
     // let sered: CelesteMap = serde_xml_rs::from_str(&dede)?;
     // assert_eq!("LostLevels", sered.package_name.as_str());
-    ThreadLocalBump::BUMP
-        .with_borrow(|bump| println!("Thread local bumped: {}", bump.allocated_bytes()));
     Ok(())
 }
